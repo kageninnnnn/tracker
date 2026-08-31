@@ -5,123 +5,129 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Tracker Pro</title>
+  <title>Capital</title>
   <style>
     :root {
-      --bg: #000000; --surface: #1c1c1e; --primary: #0a84ff; 
-      --red: #ff453a; --green: #32d74b; --purple: #bf5af2;
+      --bg: #000000; --surface: #1c1c1e; --surface-hover: #2c2c2e;
+      --primary: #0a84ff; --red: #ff453a; --green: #32d74b; --purple: #bf5af2;
       --text: #ffffff; --text-sec: #8e8e93; --border: #38383a;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
       background: var(--bg); color: var(--text); padding: 20px 16px 80px;
     }
-    
-    /* Три кружка */
-    .dashboard {
-      display: flex; justify-content: space-between; gap: 10px; margin-bottom: 24px; padding-top: 10px;
-    }
-    .circle {
-      flex: 1; aspect-ratio: 1; border-radius: 50%; background: var(--surface);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; border: 2px solid transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    }
-    .circle.balance { border-color: var(--primary); }
-    .circle.expense { border-color: var(--red); }
-    .circle.deposit { border-color: var(--purple); }
-    
-    .circle-label { font-size: 11px; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .circle-val { font-size: 15px; font-weight: 700; }
-    .balance .circle-val { color: var(--primary); }
-    .expense .circle-val { color: var(--red); }
-    .deposit .circle-val { color: var(--purple); }
 
-    /* Форма ввода */
-    .form-panel { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 24px; }
-    .type-switch {
-      display: flex; background: var(--bg); border-radius: 8px; padding: 2px; margin-bottom: 16px;
+    /* Главная карточка */
+    .hero-card {
+      background: linear-gradient(145deg, #1c1c1e 0%, #252528 100%);
+      border: 1px solid var(--border); border-radius: 24px; padding: 24px; margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
-    .type-btn {
-      flex: 1; padding: 8px 0; border: none; background: transparent; color: var(--text-sec);
-      font-size: 14px; font-weight: 600; border-radius: 6px; transition: 0.2s;
-    }
-    .type-btn.active.exp { background: var(--red); color: #fff; }
-    .type-btn.active.inc { background: var(--green); color: #fff; }
-    .type-btn.active.dep { background: var(--purple); color: #fff; }
+    .hero-label { font-size: 13px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .hero-balance { font-size: 38px; font-weight: 800; color: #fff; margin-bottom: 20px; letter-spacing: -1px; }
+    
+    .hero-stats { display: flex; gap: 12px; }
+    .stat-box { flex: 1; background: rgba(0,0,0,0.25); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.05); }
+    .stat-label { font-size: 12px; color: var(--text-sec); margin-bottom: 4px; font-weight: 500; }
+    .stat-val { font-size: 16px; font-weight: 700; }
+    .val-exp { color: var(--red); }
+    .val-dep { color: var(--purple); }
 
-    .input-group { display: flex; gap: 10px; margin-bottom: 12px; }
+    /* Блок ввода */
+    .form-panel { margin-bottom: 24px; }
+    .segmented-control {
+      display: flex; background: var(--surface); padding: 4px; border-radius: 12px; margin-bottom: 16px;
+    }
+    .seg-btn {
+      flex: 1; padding: 10px 0; border: none; background: transparent; color: var(--text-sec);
+      font-size: 14px; font-weight: 600; border-radius: 8px; transition: all 0.2s ease;
+    }
+    .seg-btn.active { color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .seg-btn.active.exp { background: var(--red); }
+    .seg-btn.active.inc { background: var(--green); }
+    .seg-btn.active.dep { background: var(--purple); }
+
+    .input-row { display: flex; gap: 12px; margin-bottom: 12px; }
     input, select {
-      flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text);
-      padding: 12px; border-radius: 10px; font-size: 16px; outline: none;
+      width: 100%; background: var(--surface); border: 1px solid transparent; color: var(--text);
+      padding: 16px; border-radius: 16px; font-size: 16px; font-weight: 500; outline: none; transition: border 0.2s;
     }
+    input:focus, select:focus { border: 1px solid var(--primary); }
+    input::placeholder { color: var(--text-sec); font-weight: 400; }
+    
     button.submit {
-      width: 100%; padding: 14px; background: var(--primary); color: #fff;
-      border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
+      width: 100%; padding: 16px; background: var(--text); color: var(--bg);
+      border: none; border-radius: 16px; font-size: 17px; font-weight: 700; margin-top: 4px;
     }
-    button.submit:active { opacity: 0.8; }
+    button.submit:active { transform: scale(0.98); opacity: 0.9; }
 
     /* Список операций */
-    .section-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
-    .list { display: flex; flex-direction: column; gap: 12px; }
-    .day-group { margin-bottom: 8px; }
-    .day-header { font-size: 13px; color: var(--text-sec); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+    .section-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.5px; }
+    .day-group { margin-bottom: 16px; }
+    .day-header { font-size: 14px; font-weight: 600; color: var(--text-sec); margin-bottom: 10px; padding-left: 4px; }
     .item {
       display: flex; justify-content: space-between; align-items: center;
-      background: var(--surface); padding: 12px 16px; border-radius: 12px; margin-bottom: 8px;
+      background: var(--surface); padding: 12px 16px; border-radius: 20px; margin-bottom: 8px;
     }
-    .item-left { display: flex; align-items: center; gap: 12px; }
-    .icon { font-size: 20px; }
-    .item-cat { font-weight: 600; font-size: 15px; }
-    .item-desc { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
-    .item-right { text-align: right; }
-    .item-amt { font-weight: 700; font-size: 16px; }
+    .item-left { display: flex; align-items: center; gap: 14px; }
+    .item-icon {
+      width: 44px; height: 44px; border-radius: 14px; background: var(--surface-hover);
+      display: flex; align-items: center; justify-content: center; font-size: 22px;
+    }
+    .item-cat { font-weight: 600; font-size: 16px; margin-bottom: 2px; }
+    .item-desc { font-size: 13px; color: var(--text-sec); }
+    .item-right { text-align: right; display: flex; align-items: center; }
+    .item-amt { font-weight: 700; font-size: 17px; letter-spacing: -0.5px; }
     .amt-exp { color: var(--red); }
     .amt-inc { color: var(--green); }
     .amt-dep { color: var(--purple); }
+    
     .del-btn {
-      color: var(--red); background: transparent; border: none; font-size: 20px;
-      padding: 0 0 0 10px; margin-left: 10px; border-left: 1px solid var(--border);
+      color: var(--text-sec); background: transparent; border: none; font-size: 22px;
+      padding: 0 0 0 12px; margin-left: 12px; border-left: 1px solid var(--border);
     }
+    .del-btn:active { color: var(--red); }
   </style>
 </head>
 <body>
 
-  <div class="dashboard">
-    <div class="circle balance">
-      <div class="circle-label">Баланс</div>
-      <div id="val-balance" class="circle-val">0 ₸</div>
-    </div>
-    <div class="circle expense">
-      <div class="circle-label">Расход (мес)</div>
-      <div id="val-month-exp" class="circle-val">0 ₸</div>
-    </div>
-    <div class="circle deposit">
-      <div class="circle-label">Копилка</div>
-      <div id="val-deposit" class="circle-val">0 ₸</div>
+  <div class="hero-card">
+    <div class="hero-label">Мой капитал</div>
+    <div id="val-balance" class="hero-balance">0 ₸</div>
+    
+    <div class="hero-stats">
+      <div class="stat-box">
+        <div class="stat-label">Расход (мес)</div>
+        <div id="val-month-exp" class="stat-val val-exp">0 ₸</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">В копилке</div>
+        <div id="val-deposit" class="stat-val val-dep">0 ₸</div>
+      </div>
     </div>
   </div>
 
   <div class="form-panel">
-    <div class="type-switch">
-      <button class="type-btn active exp" onclick="setType('exp')" id="btn-exp">Расход</button>
-      <button class="type-btn" onclick="setType('inc')" id="btn-inc">Доход</button>
-      <button class="type-btn" onclick="setType('dep')" id="btn-dep">В копилку</button>
+    <div class="segmented-control">
+      <button class="seg-btn active exp" onclick="setType('exp')" id="btn-exp">Расход</button>
+      <button class="seg-btn" onclick="setType('inc')" id="btn-inc">Доход</button>
+      <button class="seg-btn" onclick="setType('dep')" id="btn-dep">Копилка</button>
     </div>
     
-    <div class="input-group">
-      <input type="number" id="amount" placeholder="Сумма ₸" inputmode="numeric">
+    <div class="input-row">
+      <input type="number" id="amount" placeholder="Сумма (₸)" inputmode="numeric">
     </div>
-    <div class="input-group">
+    <div class="input-row">
       <select id="category"></select>
     </div>
-    <div class="input-group" style="margin-bottom: 16px;">
+    <div class="input-row">
       <input type="text" id="note" placeholder="Заметка (необязательно)">
     </div>
-    <button class="submit" onclick="addEntry()">Записать</button>
+    <button class="submit" onclick="addEntry()">Добавить операцию</button>
   </div>
 
-  <div class="section-title">История операций</div>
+  <div class="section-title">История</div>
   <div id="list" class="list"></div>
 
   <script>
@@ -130,31 +136,26 @@
 
     const categories = {
       exp: [
-        { id: 'Еда / Продукты', icon: '🍔' },
-        { id: 'Зал / БАДы', icon: '🏋️' },
-        { id: 'Долги', icon: '🤝' },
-        { id: 'Вещи / Техника', icon: '🎒' },
-        { id: 'Транспорт', icon: '🚕' },
-        { id: 'Хотелки', icon: '🎮' }
+        { id: 'Еда / Продукты', icon: '🍔' }, { id: 'Зал / БАДы', icon: '🏋️' },
+        { id: 'Долги', icon: '🤝' }, { id: 'Вещи / Техника', icon: '🎒' },
+        { id: 'Транспорт', icon: '🚕' }, { id: 'Хотелки', icon: '🎮' }
       ],
       inc: [
-        { id: 'Зарплата', icon: '💵' },
-        { id: 'Перевод', icon: '💳' },
-        { id: 'Подарок', icon: '🎁' }
+        { id: 'Зарплата', icon: '💵' }, { id: 'Перевод', icon: '💳' }, { id: 'Подарок', icon: '🎁' }
       ],
       dep: [
-        { id: 'Пополнение подушки', icon: '🏦' }
+        { id: 'Пополнение', icon: '🏦' }, { id: 'Снятие из копилки', icon: '📉' }
       ]
     };
 
     function setType(type) {
       currentType = type;
-      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active', 'exp', 'inc', 'dep'));
+      document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active', 'exp', 'inc', 'dep'));
       const btn = document.getElementById(`btn-${type}`);
       btn.classList.add('active', type);
       
       const catSelect = document.getElementById('category');
-      catSelect.innerHTML = categories[type].map(c => `<option value="${c.id}">${c.icon} ${c.id}</option>`).join('');
+      catSelect.innerHTML = categories[type].map(c => `<option value="${c.id}">${c.id}</option>`).join('');
     }
 
     function render() {
@@ -164,34 +165,31 @@
       let totalInc = 0, totalExp = 0, totalDep = 0, monthExp = 0;
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-
-      // Группировка по датам
       const groups = {};
 
       entries.forEach(item => {
         const d = new Date(item.date);
         
-        // Подсчеты
         if (item.type === 'inc') totalInc += item.amount;
         if (item.type === 'exp') {
           totalExp += item.amount;
           if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) monthExp += item.amount;
         }
-        if (item.type === 'dep') totalDep += item.amount;
+        if (item.type === 'dep') {
+            if(item.category === 'Снятие из копилки') totalDep -= item.amount;
+            else totalDep += item.amount;
+        }
 
-        // Группировка
         const dateKey = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
         if (!groups[dateKey]) groups[dateKey] = [];
         groups[dateKey].push(item);
       });
 
-      // Обновление дашбордов
       const balance = totalInc - totalExp - totalDep;
       document.getElementById('val-balance').innerText = balance.toLocaleString() + ' ₸';
       document.getElementById('val-month-exp').innerText = monthExp.toLocaleString() + ' ₸';
       document.getElementById('val-deposit').innerText = totalDep.toLocaleString() + ' ₸';
 
-      // Отрисовка списка
       Object.keys(groups).reverse().forEach(date => {
         const groupDiv = document.createElement('div');
         groupDiv.className = 'day-group';
@@ -199,11 +197,10 @@
         
         groups[date].slice().reverse().forEach(item => {
           let prefix = '', amtClass = '';
-          if (item.type === 'inc') { prefix = '+'; amtClass = 'amt-inc'; }
+          if (item.type === 'inc' || (item.type === 'dep' && item.category === 'Снятие из копилки')) { prefix = '+'; amtClass = 'amt-inc'; }
           else if (item.type === 'exp') { prefix = '-'; amtClass = 'amt-exp'; }
           else { prefix = '→'; amtClass = 'amt-dep'; }
 
-          // Поиск иконки
           const catObj = categories[item.type].find(c => c.id === item.category);
           const icon = catObj ? catObj.icon : '📌';
 
@@ -211,13 +208,13 @@
           row.className = 'item';
           row.innerHTML = `
             <div class="item-left">
-              <div class="icon">${icon}</div>
+              <div class="item-icon">${icon}</div>
               <div>
                 <div class="item-cat">${item.category}</div>
                 ${item.note ? `<div class="item-desc">${item.note}</div>` : ''}
               </div>
             </div>
-            <div class="item-right" style="display: flex; align-items: center;">
+            <div class="item-right">
               <div class="item-amt ${amtClass}">${prefix}${item.amount.toLocaleString()} ₸</div>
               <button class="del-btn" onclick="deleteEntry(${item.id})">×</button>
             </div>
@@ -258,7 +255,6 @@
       }
     }
 
-    // Инициализация
     setType('exp');
     render();
   </script>
