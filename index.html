@@ -5,128 +5,261 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Finance Tracker</title>
+  <title>Tracker Pro</title>
   <style>
     :root {
-      --bg: #0f172a; --card: #1e293b; --text: #f8fafc;
-      --accent: #38bdf8; --red: #f87171; --green: #4ade80;
+      --bg: #000000; --surface: #1c1c1e; --primary: #0a84ff; 
+      --red: #ff453a; --green: #32d74b; --purple: #bf5af2;
+      --text: #ffffff; --text-sec: #8e8e93; --border: #38383a;
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
     body {
-      margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg); color: var(--text); display: flex; flex-direction: column; gap: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg); color: var(--text); padding: 20px 16px 80px;
     }
-    .stats {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    }
-    .stat-card {
-      background: var(--card); padding: 14px; border-radius: 12px;
-    }
-    .stat-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; }
-    .stat-val { font-size: 20px; font-weight: 700; margin-top: 4px; }
-    .income { color: var(--green); }
-    .expense { color: var(--red); }
     
-    .form-box {
-      background: var(--card); padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 10px;
+    /* Три кружка */
+    .dashboard {
+      display: flex; justify-content: space-between; gap: 10px; margin-bottom: 24px; padding-top: 10px;
     }
-    input, select, button {
-      width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155;
-      background: #0f172a; color: var(--text); font-size: 16px;
+    .circle {
+      flex: 1; aspect-ratio: 1; border-radius: 50%; background: var(--surface);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; border: 2px solid transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
-    button {
-      background: var(--accent); color: #0f172a; font-weight: 700; border: none; margin-top: 6px;
-    }
-    button:active { opacity: 0.8; }
+    .circle.balance { border-color: var(--primary); }
+    .circle.expense { border-color: var(--red); }
+    .circle.deposit { border-color: var(--purple); }
     
-    .list { display: flex; flex-direction: column; gap: 8px; }
+    .circle-label { font-size: 11px; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .circle-val { font-size: 15px; font-weight: 700; }
+    .balance .circle-val { color: var(--primary); }
+    .expense .circle-val { color: var(--red); }
+    .deposit .circle-val { color: var(--purple); }
+
+    /* Форма ввода */
+    .form-panel { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 24px; }
+    .type-switch {
+      display: flex; background: var(--bg); border-radius: 8px; padding: 2px; margin-bottom: 16px;
+    }
+    .type-btn {
+      flex: 1; padding: 8px 0; border: none; background: transparent; color: var(--text-sec);
+      font-size: 14px; font-weight: 600; border-radius: 6px; transition: 0.2s;
+    }
+    .type-btn.active.exp { background: var(--red); color: #fff; }
+    .type-btn.active.inc { background: var(--green); color: #fff; }
+    .type-btn.active.dep { background: var(--purple); color: #fff; }
+
+    .input-group { display: flex; gap: 10px; margin-bottom: 12px; }
+    input, select {
+      flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 12px; border-radius: 10px; font-size: 16px; outline: none;
+    }
+    button.submit {
+      width: 100%; padding: 14px; background: var(--primary); color: #fff;
+      border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
+    }
+    button.submit:active { opacity: 0.8; }
+
+    /* Список операций */
+    .section-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+    .list { display: flex; flex-direction: column; gap: 12px; }
+    .day-group { margin-bottom: 8px; }
+    .day-header { font-size: 13px; color: var(--text-sec); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
     .item {
-      background: var(--card); padding: 12px 16px; border-radius: 10px;
       display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface); padding: 12px 16px; border-radius: 12px; margin-bottom: 8px;
     }
-    .item-cat { font-size: 14px; color: #94a3b8; }
+    .item-left { display: flex; align-items: center; gap: 12px; }
+    .icon { font-size: 20px; }
+    .item-cat { font-weight: 600; font-size: 15px; }
+    .item-desc { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
+    .item-right { text-align: right; }
     .item-amt { font-weight: 700; font-size: 16px; }
+    .amt-exp { color: var(--red); }
+    .amt-inc { color: var(--green); }
+    .amt-dep { color: var(--purple); }
+    .del-btn {
+      color: var(--red); background: transparent; border: none; font-size: 20px;
+      padding: 0 0 0 10px; margin-left: 10px; border-left: 1px solid var(--border);
+    }
   </style>
 </head>
 <body>
 
-  <div class="stats">
-    <div class="stat-card">
-      <div class="stat-label">Доход</div>
-      <div id="total-inc" class="stat-val income">0 ₸</div>
+  <div class="dashboard">
+    <div class="circle balance">
+      <div class="circle-label">Баланс</div>
+      <div id="val-balance" class="circle-val">0 ₸</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Расход</div>
-      <div id="total-exp" class="stat-val expense">0 ₸</div>
+    <div class="circle expense">
+      <div class="circle-label">Расход (мес)</div>
+      <div id="val-month-exp" class="circle-val">0 ₸</div>
+    </div>
+    <div class="circle deposit">
+      <div class="circle-label">Копилка</div>
+      <div id="val-deposit" class="circle-val">0 ₸</div>
     </div>
   </div>
 
-  <div class="form-box">
-    <select id="type">
-      <option value="expense">Расход (-)</option>
-      <option value="income">Доход (+)</option>
-    </select>
-    <input type="number" id="amount" placeholder="Сумма (₸)" inputmode="numeric">
-    <select id="category">
-      <option value="Еда">Еда</option>
-      <option value="Зал / БАДы">Зал / БАДы</option>
-      <option value="Долги">Долги</option>
-      <option value="Вещи / Инструменты">Вещи / Инструменты</option>
-      <option value="Хотелки">Хотелки</option>
-      <option value="Зарплата / Перевод">Зарплата / Перевод</option>
-    </select>
-    <button onclick="addEntry()">Записать</button>
+  <div class="form-panel">
+    <div class="type-switch">
+      <button class="type-btn active exp" onclick="setType('exp')" id="btn-exp">Расход</button>
+      <button class="type-btn" onclick="setType('inc')" id="btn-inc">Доход</button>
+      <button class="type-btn" onclick="setType('dep')" id="btn-dep">В копилку</button>
+    </div>
+    
+    <div class="input-group">
+      <input type="number" id="amount" placeholder="Сумма ₸" inputmode="numeric">
+    </div>
+    <div class="input-group">
+      <select id="category"></select>
+    </div>
+    <div class="input-group" style="margin-bottom: 16px;">
+      <input type="text" id="note" placeholder="Заметка (необязательно)">
+    </div>
+    <button class="submit" onclick="addEntry()">Записать</button>
   </div>
 
-  <div id="entries-list" class="list"></div>
+  <div class="section-title">История операций</div>
+  <div id="list" class="list"></div>
 
   <script>
-    let entries = JSON.parse(localStorage.getItem('finances') || '[]');
+    let entries = JSON.parse(localStorage.getItem('mm_data') || '[]');
+    let currentType = 'exp';
+
+    const categories = {
+      exp: [
+        { id: 'Еда / Продукты', icon: '🍔' },
+        { id: 'Зал / БАДы', icon: '🏋️' },
+        { id: 'Долги', icon: '🤝' },
+        { id: 'Вещи / Техника', icon: '🎒' },
+        { id: 'Транспорт', icon: '🚕' },
+        { id: 'Хотелки', icon: '🎮' }
+      ],
+      inc: [
+        { id: 'Зарплата', icon: '💵' },
+        { id: 'Перевод', icon: '💳' },
+        { id: 'Подарок', icon: '🎁' }
+      ],
+      dep: [
+        { id: 'Пополнение подушки', icon: '🏦' }
+      ]
+    };
+
+    function setType(type) {
+      currentType = type;
+      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active', 'exp', 'inc', 'dep'));
+      const btn = document.getElementById(`btn-${type}`);
+      btn.classList.add('active', type);
+      
+      const catSelect = document.getElementById('category');
+      catSelect.innerHTML = categories[type].map(c => `<option value="${c.id}">${c.icon} ${c.id}</option>`).join('');
+    }
 
     function render() {
-      const list = document.getElementById('entries-list');
-      list.innerHTML = '';
-      let inc = 0, exp = 0;
+      const listEl = document.getElementById('list');
+      listEl.innerHTML = '';
+      
+      let totalInc = 0, totalExp = 0, totalDep = 0, monthExp = 0;
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
 
-      entries.slice().reverse().forEach((item, index) => {
-        if (item.type === 'income') inc += item.amount;
-        else exp += item.amount;
+      // Группировка по датам
+      const groups = {};
 
-        const row = document.createElement('div');
-        row.className = 'item';
-        row.innerHTML = `
-          <div>
-            <div style="font-weight:600">${item.category}</div>
-            <div class="item-cat">${new Date(item.date).toLocaleDateString('ru-RU')}</div>
-          </div>
-          <div class="item-amt ${item.type === 'income' ? 'income' : 'expense'}">
-            ${item.type === 'income' ? '+' : '-'}${item.amount.toLocaleString()} ₸
-          </div>
-        `;
-        list.appendChild(row);
+      entries.forEach(item => {
+        const d = new Date(item.date);
+        
+        // Подсчеты
+        if (item.type === 'inc') totalInc += item.amount;
+        if (item.type === 'exp') {
+          totalExp += item.amount;
+          if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) monthExp += item.amount;
+        }
+        if (item.type === 'dep') totalDep += item.amount;
+
+        // Группировка
+        const dateKey = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        if (!groups[dateKey]) groups[dateKey] = [];
+        groups[dateKey].push(item);
       });
 
-      document.getElementById('total-inc').innerText = inc.toLocaleString() + ' ₸';
-      document.getElementById('total-exp').innerText = exp.toLocaleString() + ' ₸';
-      localStorage.setItem('finances', JSON.stringify(entries));
+      // Обновление дашбордов
+      const balance = totalInc - totalExp - totalDep;
+      document.getElementById('val-balance').innerText = balance.toLocaleString() + ' ₸';
+      document.getElementById('val-month-exp').innerText = monthExp.toLocaleString() + ' ₸';
+      document.getElementById('val-deposit').innerText = totalDep.toLocaleString() + ' ₸';
+
+      // Отрисовка списка
+      Object.keys(groups).reverse().forEach(date => {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'day-group';
+        groupDiv.innerHTML = `<div class="day-header">${date}</div>`;
+        
+        groups[date].slice().reverse().forEach(item => {
+          let prefix = '', amtClass = '';
+          if (item.type === 'inc') { prefix = '+'; amtClass = 'amt-inc'; }
+          else if (item.type === 'exp') { prefix = '-'; amtClass = 'amt-exp'; }
+          else { prefix = '→'; amtClass = 'amt-dep'; }
+
+          // Поиск иконки
+          const catObj = categories[item.type].find(c => c.id === item.category);
+          const icon = catObj ? catObj.icon : '📌';
+
+          const row = document.createElement('div');
+          row.className = 'item';
+          row.innerHTML = `
+            <div class="item-left">
+              <div class="icon">${icon}</div>
+              <div>
+                <div class="item-cat">${item.category}</div>
+                ${item.note ? `<div class="item-desc">${item.note}</div>` : ''}
+              </div>
+            </div>
+            <div class="item-right" style="display: flex; align-items: center;">
+              <div class="item-amt ${amtClass}">${prefix}${item.amount.toLocaleString()} ₸</div>
+              <button class="del-btn" onclick="deleteEntry(${item.id})">×</button>
+            </div>
+          `;
+          groupDiv.appendChild(row);
+        });
+        listEl.appendChild(groupDiv);
+      });
+
+      localStorage.setItem('mm_data', JSON.stringify(entries));
     }
 
     function addEntry() {
       const amtInput = document.getElementById('amount');
+      const noteInput = document.getElementById('note');
       const amount = parseFloat(amtInput.value);
+      
       if (!amount || amount <= 0) return;
 
       entries.push({
-        type: document.getElementById('type').value,
+        id: Date.now(),
+        type: currentType,
         amount: amount,
         category: document.getElementById('category').value,
+        note: noteInput.value,
         date: new Date().toISOString()
       });
 
       amtInput.value = '';
+      noteInput.value = '';
       render();
     }
 
+    function deleteEntry(id) {
+      if(confirm('Удалить запись?')) {
+        entries = entries.filter(e => e.id !== id);
+        render();
+      }
+    }
+
+    // Инициализация
+    setType('exp');
     render();
   </script>
 </body>
