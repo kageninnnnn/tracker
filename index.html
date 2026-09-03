@@ -1,507 +1,243 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.json">
-  <title>Capital</title>
-  <style>
-    :root {
-      --bg: #000000; --surface: #1c1c1e; --surface-subtle: #2c2c2e; --separator: #38383a;
-      --blue: #0a84ff; --red: #ff453a; --green: #32d74b; --purple: #bf5af2; --orange: #ff9f0a;
-      --text: #ffffff; --text-sec: #8e8e93;
-    }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background: var(--bg); color: var(--text); padding: 20px 16px 80px; }
-    
-    /* Сводка баланса */
-    .hero-card { background: var(--surface); border-radius: 20px; padding: 20px; margin-bottom: 24px; }
-    .hero-label { font-size: 13px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; margin-bottom: 4px; }
-    .hero-balance { font-size: 40px; font-weight: 700; color: #fff; margin-bottom: 20px; letter-spacing: -1px; }
-    .hero-stats { display: flex; justify-content: space-between; border-top: 1px solid var(--separator); padding-top: 16px; gap: 8px; }
-    .stat-box { flex: 1; }
-    .stat-label { font-size: 12px; color: var(--text-sec); margin-bottom: 4px; }
-    .stat-val { font-size: 16px; font-weight: 600; }
-    .val-exp { color: var(--red); } .val-dep { color: var(--blue); } .val-inc { color: var(--green); }
+function updateMonthFilter() {
+  const select = document.getElementById('month-filter');
+  const months = [...new Set(entries.map(e => e.date.substring(0, 7)))].sort().reverse();
+  const current = new Date().toISOString().substring(0, 7);
+  if (!months.includes(current)) months.unshift(current);
+  
+  const prevVal = select.value;
+  
+  // Добавляем пункт "Все время" самым первым в списке
+  const options = ['<option value="all">Все время</option>'];
+  months.forEach(m => options.push(`<option value="${m}">${m}</option>`));
+  
+  select.innerHTML = options.join('');
+  
+  // Сохраняем предыдущий выбор или ставим текущий месяц
+  if (prevVal && (months.includes(prevVal) || prevVal === 'all')) {
+    select.value = prevVal;
+  } else {
+    select.value = current;
+  }
+}
 
-    /* Сегментированный контроль */
-    .segmented-control { display: flex; background: #1c1c1e; padding: 3px; border-radius: 9px; margin-bottom: 16px; }
-    .seg-btn { flex: 1; padding: 6px 0; border: none; background: transparent; color: var(--text); font-size: 13px; font-weight: 600; border-radius: 7px; transition: 0.2s; cursor: pointer; }
-    .seg-btn.active { background: #636366; color: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 3px 1px rgba(0,0,0,0.04); }
-
-    /* Формы ввода */
-    .ios-group { background: var(--surface); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
-    .ios-row { display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--separator); position: relative; }
-    .ios-row:last-child { border-bottom: none; }
-    .ios-row input, .ios-row select { width: 100%; background: transparent; border: none; color: var(--text); padding: 14px 0; font-size: 17px; outline: none; appearance: none; }
-    .ios-row input::placeholder { color: var(--text-sec); }
-    .ios-row input[type="date"] { color-scheme: dark; }
-    
-    button.submit { width: 100%; padding: 16px; background: var(--blue); color: #fff; border: none; border-radius: 14px; font-size: 17px; font-weight: 600; margin-bottom: 24px; cursor: pointer; }
-    button.submit:active { opacity: 0.8; }
-
-    /* Заголовки секций и селектор месяца */
-    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px; }
-    .section-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-    select#month-filter, input#date-filter { background: var(--surface); color: var(--blue); border: none; font-size: 14px; font-weight: 600; padding: 6px 10px; border-radius: 8px; outline: none; color-scheme: dark; }
-
-    /* БЛОК АНАЛИТИКИ: Карточка Бюджета и Лимита */
-    .budget-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--separator); }
-    .budget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .budget-title { font-size: 13px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; }
-    .budget-edit-btn { background: var(--surface-subtle); border: none; color: var(--blue); font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 8px; cursor: pointer; }
-    
-    .budget-main-stat { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-    .spent-val { font-size: 28px; font-weight: 700; }
-    .limit-val { font-size: 14px; color: var(--text-sec); }
-
-    .budget-progress-track { width: 100%; height: 8px; background: var(--separator); border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
-    .budget-progress-fill { height: 100%; transition: width 0.3s ease, background 0.3s ease; }
-    
-    .budget-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 10px; border-top: 1px solid var(--separator); }
-    .meta-box { display: flex; flex-direction: column; }
-    .meta-lbl { font-size: 12px; color: var(--text-sec); margin-bottom: 2px; }
-    .meta-val { font-size: 14px; font-weight: 600; }
-
-    /* БЛОК АНАЛИТИКИ: Развернутый отчет "Сколько и на что" */
-    .report-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 24px; border: 1px solid var(--separator); }
-    .report-headline { font-size: 13px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; margin-bottom: 14px; }
-    
-    .cat-report-item { margin-bottom: 14px; }
-    .cat-report-item:last-child { margin-bottom: 0; }
-    .cat-line-1 { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-    .cat-line-2 { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sec); margin-bottom: 6px; }
-    
-    .cat-bar-track { width: 100%; height: 6px; background: var(--separator); border-radius: 3px; overflow: hidden; }
-    .cat-bar-fill { height: 100%; background: var(--blue); border-radius: 3px; }
-
-    /* Лента истории */
-    .day-group { margin-bottom: 20px; }
-    .day-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; margin-bottom: 8px; padding: 0 16px; }
-    .history-list { background: var(--surface); border-radius: 12px; overflow: hidden; }
-    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--separator); }
-    .history-item:last-child { border-bottom: none; }
-    .item-cat { font-size: 17px; font-weight: 500; }
-    .item-desc { font-size: 13px; color: var(--text-sec); margin-top: 2px; }
-    .item-amt { font-size: 17px; font-weight: 600; text-align: right; }
-    .amt-exp { color: var(--text); } .amt-inc { color: var(--green); } .amt-dep { color: var(--blue); }
-    .del-btn { color: var(--red); background: transparent; border: none; font-size: 15px; padding-left: 12px; margin-left: 12px; border-left: 1px solid var(--separator); cursor: pointer; }
-
-    .data-tools { display: flex; gap: 10px; margin-top: 30px; }
-    .tool-btn { flex: 1; padding: 10px; border-radius: 10px; background: var(--surface); color: var(--blue); border: none; font-size: 13px; font-weight: 500; cursor: pointer; }
-    .empty-notice { color: var(--text-sec); font-size: 14px; text-align: center; padding: 20px; background: var(--surface); border-radius: 12px; }
-  </style>
-</head>
-<body>
-
-  <!-- Баланс и сводка -->
-  <div class="hero-card">
-    <div class="hero-label">Мой капитал</div>
-    <div id="val-balance" class="hero-balance">0 ₸</div>
-    <div class="hero-stats">
-      <div class="stat-box">
-        <div class="stat-label">Доход (мес)</div>
-        <div id="val-month-inc" class="stat-val val-inc">0 ₸</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Расход (мес)</div>
-        <div id="val-month-exp" class="stat-val val-exp">0 ₸</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">В копилке</div>
-        <div id="val-deposit" class="stat-val val-dep">0 ₸</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Форма внесения -->
-  <div>
-    <div class="segmented-control">
-      <button class="seg-btn active" onclick="setType('exp')" id="btn-exp">Расход</button>
-      <button class="seg-btn" onclick="setType('inc')" id="btn-inc">Доход</button>
-      <button class="seg-btn" onclick="setType('dep')" id="btn-dep">Копилка</button>
-    </div>
-    <div class="ios-group">
-      <div class="ios-row"><input type="number" id="amount" placeholder="Сумма (₸)" inputmode="numeric"></div>
-      <div class="ios-row"><select id="category"></select></div>
-      <div class="ios-row"><input type="date" id="entry-date"></div>
-      <div class="ios-row"><input type="text" id="note" placeholder="Заметка"></div>
-    </div>
-    <button class="submit" onclick="addEntry()">Добавить</button>
-  </div>
-
-  <!-- РАЗДЕЛ АНАЛИТИКИ -->
-  <div class="section-header">
-    <div class="section-title">Аналитика</div>
-    <select id="month-filter" onchange="render()"></select>
-  </div>
-
-  <!-- 1. Карточка Бюджета и Лимита -->
-  <div class="budget-card">
-    <div class="budget-header">
-      <span class="budget-title">Лимит расходов</span>
-      <button class="budget-edit-btn" onclick="promptSetBudget()">⚙ Задать лимит</button>
-    </div>
-    <div class="budget-main-stat">
-      <div class="spent-val" id="budget-spent-val">0 ₸</div>
-      <div class="limit-val" id="budget-total-val">лимит: 0 ₸</div>
-    </div>
-    <div class="budget-progress-track">
-      <div class="budget-progress-fill" id="budget-fill" style="width: 0%; background: var(--blue);"></div>
-    </div>
-    <div class="budget-meta">
-      <div class="meta-box">
-        <span class="meta-lbl">Статус лимита</span>
-        <span class="meta-val" id="budget-remaining-text">0 ₸</span>
-      </div>
-      <div class="meta-box" style="text-align: right;">
-        <span class="meta-lbl">В день до конца месяца</span>
-        <span class="meta-val" id="budget-daily-pace">-</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 2. Детальный отчет "Сколько и на что" -->
-  <div class="report-card">
-    <div class="report-headline">Куда ушли деньги за месяц</div>
-    <div id="analytics-categories"></div>
-  </div>
-
-  <!-- РАЗДЕЛ ИСТОРИИ -->
-  <div class="section-header" style="margin-top: 24px;">
-    <div class="section-title">История</div>
-    <input type="date" id="date-filter" onchange="applyDateFilter()" style="display: none;">
-  </div>
-
-  <div class="segmented-control" style="margin-bottom: 12px;">
-    <button class="seg-btn active" id="filter-mode-month" onclick="setViewMode('month')">За весь месяц</button>
-    <button class="seg-btn" id="filter-mode-day" onclick="setViewMode('day')">По дате</button>
-  </div>
-
-  <div id="list"></div>
-
-  <!-- Экспорт / Импорт -->
-  <div class="data-tools">
-    <button class="tool-btn" onclick="exportData()">Скачать JSON</button>
-    <button class="tool-btn" onclick="document.getElementById('import-file').click()">Загрузить JSON</button>
-    <input type="file" id="import-file" style="display:none" accept=".json" onchange="importData(event)">
-  </div>
-
-  <script>
-    let entries = JSON.parse(localStorage.getItem('mm_data') || '[]');
-    let budgets = JSON.parse(localStorage.getItem('mm_budgets') || '{}');
-    let defaultBudget = parseFloat(localStorage.getItem('mm_default_budget') || '200000');
-    
-    let currentType = 'exp';
-    let viewMode = 'month';
-
-    const categories = {
-      exp: ['Еда / Продукты', 'Зал / БАДы', 'Долги', 'Вещи / Техника', 'Транспорт', 'Хотелки'],
-      inc: ['Зарплата', 'Перевод', 'Подарок'],
-      dep: ['Пополнение', 'Снятие из копилки']
-    };
-
-    document.getElementById('entry-date').value = new Date().toISOString().substring(0, 10);
-    document.getElementById('date-filter').value = new Date().toISOString().substring(0, 10);
-
-    function setType(type) {
-      currentType = type;
-      document.querySelectorAll('.segmented-control:first-of-type .seg-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(`btn-${type}`).classList.add('active');
-      document.getElementById('category').innerHTML = categories[type].map(c => `<option value="${c}">${c}</option>`).join('');
-    }
-
-    function setViewMode(mode) {
-      viewMode = mode;
-      document.getElementById('filter-mode-month').classList.toggle('active', mode === 'month');
-      document.getElementById('filter-mode-day').classList.toggle('active', mode === 'day');
-      document.getElementById('date-filter').style.display = mode === 'day' ? 'block' : 'none';
+function promptSetBudget() {
+  const selectedMonth = document.getElementById('month-filter').value;
+  if (selectedMonth === 'all') {
+    alert('Лимит устанавливается для конкретного месяца, а не для общего периода.');
+    return;
+  }
+  const currentLimit = budgets[selectedMonth] || defaultBudget;
+  const input = prompt(`Установите лимит расходов на месяц ${selectedMonth} (в тенге):`, currentLimit);
+  if (input !== null) {
+    const val = parseFloat(input);
+    if (!isNaN(val) && val >= 0) {
+      budgets[selectedMonth] = val;
+      localStorage.setItem('mm_budgets', JSON.stringify(budgets));
       render();
+    } else {
+      alert('Введите корректное число');
+    }
+  }
+}
+
+function render() {
+  updateMonthFilter();
+  const listEl = document.getElementById('list');
+  const analyticsCatsEl = document.getElementById('analytics-categories');
+  const budgetCard = document.querySelector('.budget-card');
+  listEl.innerHTML = ''; 
+  analyticsCatsEl.innerHTML = '';
+  
+  let totalInc = 0, totalExp = 0, totalDep = 0;
+  let periodInc = 0, periodExp = 0;
+  
+  const selectedMonth = document.getElementById('month-filter').value;
+  const selectedDay = document.getElementById('date-filter').value;
+  const isAllTime = selectedMonth === 'all';
+  
+  const groups = {};
+  const catStats = {};
+
+  entries.forEach(item => {
+    const itemDateStr = item.date.substring(0, 10);
+    const itemMonth = item.date.substring(0, 7);
+
+    // Расчет общего баланса
+    if (item.type === 'inc') totalInc += item.amount;
+    if (item.type === 'exp') totalExp += item.amount;
+    if (item.type === 'dep') {
+      if (item.category === 'Снятие из копилки') totalDep -= item.amount;
+      else totalDep += item.amount;
     }
 
-    function applyDateFilter() {
-      const selectedDate = document.getElementById('date-filter').value;
-      if (selectedDate) {
-        const monthPart = selectedDate.substring(0, 7);
-        const monthSelect = document.getElementById('month-filter');
-        if (monthSelect.value !== monthPart) monthSelect.value = monthPart;
+    // Вхождение в выбранный период (конкретный месяц или "все время")
+    const matchesPeriod = isAllTime || (itemMonth === selectedMonth);
+
+    if (matchesPeriod) {
+      if (item.type === 'inc') periodInc += item.amount;
+      if (item.type === 'exp') {
+        periodExp += item.amount;
+        if (!catStats[item.category]) catStats[item.category] = { sum: 0, count: 0 };
+        catStats[item.category].sum += item.amount;
+        catStats[item.category].count += 1;
       }
-      render();
     }
 
-    function updateMonthFilter() {
-      const select = document.getElementById('month-filter');
-      const months = [...new Set(entries.map(e => e.date.substring(0, 7)))].sort().reverse();
-      const current = new Date().toISOString().substring(0, 7);
-      if (!months.includes(current)) months.unshift(current);
-      
-      const prevVal = select.value;
-      select.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
-      select.value = months.includes(prevVal) ? prevVal : current;
+    // Фильтр списка истории
+    let matchesHistory = false;
+    if (viewMode === 'month' && matchesPeriod) {
+      matchesHistory = true;
+    } else if (viewMode === 'day' && itemDateStr === selectedDay) {
+      matchesHistory = true;
     }
 
-    function promptSetBudget() {
-      const selectedMonth = document.getElementById('month-filter').value;
-      const currentLimit = budgets[selectedMonth] || defaultBudget;
-      const input = prompt(`Установите лимит расходов на месяц ${selectedMonth} (в тенге):`, currentLimit);
-      if (input !== null) {
-        const val = parseFloat(input);
-        if (!isNaN(val) && val >= 0) {
-          budgets[selectedMonth] = val;
-          localStorage.setItem('mm_budgets', JSON.stringify(budgets));
-          render();
-        } else {
-          alert('Введите корректное положительное число');
-        }
-      }
+    if (matchesHistory) {
+      const d = new Date(item.date);
+      const dateKey = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(item);
+    }
+  });
+
+  // 1. Верхний баланс (меняем подписи в зависимости от выбранного режима)
+  document.getElementById('val-balance').innerText = (totalInc - totalExp - totalDep).toLocaleString() + ' ₸';
+  
+  const incLabel = document.querySelector('.hero-stats .stat-box:nth-child(1) .stat-label');
+  const expLabel = document.querySelector('.hero-stats .stat-box:nth-child(2) .stat-label');
+  incLabel.innerText = isAllTime ? 'Доход (всего)' : 'Доход (мес)';
+  expLabel.innerText = isAllTime ? 'Расход (всего)' : 'Расход (мес)';
+
+  document.getElementById('val-month-inc').innerText = periodInc.toLocaleString() + ' ₸';
+  document.getElementById('val-month-exp').innerText = periodExp.toLocaleString() + ' ₸';
+  document.getElementById('val-deposit').innerText = totalDep.toLocaleString() + ' ₸';
+
+  // 2. Блок Лимита: скрываем в режиме "Все время", так как лимит ежемесячный
+  if (isAllTime) {
+    budgetCard.style.display = 'none';
+  } else {
+    budgetCard.style.display = 'block';
+    
+    const monthLimit = budgets[selectedMonth] !== undefined ? budgets[selectedMonth] : defaultBudget;
+    const remaining = monthLimit - periodExp;
+    const budgetPercent = monthLimit > 0 ? Math.min(100, Math.round((periodExp / monthLimit) * 100)) : 0;
+
+    document.getElementById('budget-spent-val').innerText = `${periodExp.toLocaleString()} ₸`;
+    document.getElementById('budget-total-val').innerText = `лимит: ${monthLimit.toLocaleString()} ₸`;
+
+    const fillBar = document.getElementById('budget-fill');
+    fillBar.style.width = `${budgetPercent}%`;
+
+    if (periodExp > monthLimit) {
+      fillBar.style.background = 'var(--red)';
+    } else if (budgetPercent >= 80) {
+      fillBar.style.background = 'var(--orange)';
+    } else {
+      fillBar.style.background = 'var(--blue)';
     }
 
-    function render() {
-      updateMonthFilter();
-      const listEl = document.getElementById('list');
-      const analyticsCatsEl = document.getElementById('analytics-categories');
-      listEl.innerHTML = ''; 
-      analyticsCatsEl.innerHTML = '';
-      
-      let totalInc = 0, totalExp = 0, totalDep = 0;
-      let monthInc = 0, monthExp = 0;
-      
-      const selectedMonth = document.getElementById('month-filter').value;
-      const selectedDay = document.getElementById('date-filter').value;
-      
-      const groups = {};
-      const catStats = {}; // { [cat]: { sum: X, count: Y } }
+    const [yearStr, monthStr] = selectedMonth.split('-');
+    const today = new Date();
+    const isCurrentMonth = (today.getFullYear() === parseInt(yearStr)) && ((today.getMonth() + 1) === parseInt(monthStr));
+    
+    const remainingTextEl = document.getElementById('budget-remaining-text');
+    const paceEl = document.getElementById('budget-daily-pace');
 
-      entries.forEach(item => {
-        const itemDateStr = item.date.substring(0, 10);
-        const itemMonth = item.date.substring(0, 7);
-
-        // Общий капитал
-        if (item.type === 'inc') totalInc += item.amount;
-        if (item.type === 'exp') totalExp += item.amount;
-        if (item.type === 'dep') {
-          if (item.category === 'Снятие из копилки') totalDep -= item.amount;
-          else totalDep += item.amount;
-        }
-
-        // Выбранный месяц
-        if (itemMonth === selectedMonth) {
-          if (item.type === 'inc') monthInc += item.amount;
-          if (item.type === 'exp') {
-            monthExp += item.amount;
-            if (!catStats[item.category]) catStats[item.category] = { sum: 0, count: 0 };
-            catStats[item.category].sum += item.amount;
-            catStats[item.category].count += 1;
-          }
-        }
-
-        let matchesFilter = false;
-        if (viewMode === 'month' && itemMonth === selectedMonth) matchesFilter = true;
-        else if (viewMode === 'day' && itemDateStr === selectedDay) matchesFilter = true;
-
-        if (matchesFilter) {
-          const d = new Date(item.date);
-          const dateKey = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-          if (!groups[dateKey]) groups[dateKey] = [];
-          groups[dateKey].push(item);
-        }
-      });
-
-      // 1. Верхний баланс
-      document.getElementById('val-balance').innerText = (totalInc - totalExp - totalDep).toLocaleString() + ' ₸';
-      document.getElementById('val-month-inc').innerText = monthInc.toLocaleString() + ' ₸';
-      document.getElementById('val-month-exp').innerText = monthExp.toLocaleString() + ' ₸';
-      document.getElementById('val-deposit').innerText = totalDep.toLocaleString() + ' ₸';
-
-      // 2. Блок Лимита Месяца
-      const monthLimit = budgets[selectedMonth] !== undefined ? budgets[selectedMonth] : defaultBudget;
-      const remaining = monthLimit - monthExp;
-      const budgetPercent = monthLimit > 0 ? Math.min(100, Math.round((monthExp / monthLimit) * 100)) : 0;
-
-      document.getElementById('budget-spent-val').innerText = `${monthExp.toLocaleString()} ₸`;
-      document.getElementById('budget-total-val').innerText = `лимит: ${monthLimit.toLocaleString()} ₸`;
-
-      const fillBar = document.getElementById('budget-fill');
-      fillBar.style.width = `${budgetPercent}%`;
-
-      if (monthExp > monthLimit) {
-        fillBar.style.background = 'var(--red)';
-      } else if (budgetPercent >= 80) {
-        fillBar.style.background = 'var(--orange)';
+    if (remaining >= 0) {
+      remainingTextEl.innerHTML = `<span style="color:var(--green)">Осталось ${remaining.toLocaleString()} ₸</span>`;
+      if (isCurrentMonth) {
+        const totalDaysInMonth = new Date(yearStr, monthStr, 0).getDate();
+        const daysLeft = Math.max(1, totalDaysInMonth - today.getDate() + 1);
+        const perDay = Math.floor(remaining / daysLeft);
+        paceEl.innerText = `до ${perDay.toLocaleString()} ₸`;
       } else {
-        fillBar.style.background = 'var(--blue)';
+        paceEl.innerText = 'Месяц закрыт';
       }
+    } else {
+      const overspent = Math.abs(remaining);
+      remainingTextEl.innerHTML = `<span style="color:var(--red)">Перерасход +${overspent.toLocaleString()} ₸</span>`;
+      paceEl.innerText = 'Лимит превышен';
+    }
+  }
 
-      const [yearStr, monthStr] = selectedMonth.split('-');
-      const today = new Date();
-      const isCurrentMonth = (today.getFullYear() === parseInt(yearStr)) && ((today.getMonth() + 1) === parseInt(monthStr));
+  // 3. Отчет "Куда ушли деньги" (поддерживает и конкретный месяц, и "Все время")
+  const reportHeadline = document.querySelector('.report-headline');
+  reportHeadline.innerText = isAllTime ? 'Куда ушли деньги за все время' : 'Куда ушли деньги за месяц';
+
+  const sortedCategories = Object.keys(catStats).sort((a, b) => catStats[b].sum - catStats[a].sum);
+  if (sortedCategories.length === 0) {
+    analyticsCatsEl.innerHTML = '<div style="color:var(--text-sec); font-size:14px; text-align:center; padding:10px 0;">Расходов за выбранный период нет</div>';
+  } else {
+    sortedCategories.forEach(cat => {
+      const { sum, count } = catStats[cat];
+      const percent = periodExp > 0 ? Math.round((sum / periodExp) * 100) : 0;
+      const avg = Math.round(sum / count);
+
+      analyticsCatsEl.innerHTML += `
+        <div class="cat-report-item">
+          <div class="cat-line-1">
+            <span>${cat}</span>
+            <span>${sum.toLocaleString()} ₸</span>
+          </div>
+          <div class="cat-line-2">
+            <span>${percent}% от всех трат • ${count} ${count === 1 ? 'чек' : 'чека(ов)'}</span>
+            <span>ср. чек ${avg.toLocaleString()} ₸</span>
+          </div>
+          <div class="cat-bar-track">
+            <div class="cat-bar-fill" style="width: ${percent}%;"></div>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  // 4. Список Истории
+  const groupDates = Object.keys(groups);
+  if (groupDates.length === 0) {
+    listEl.innerHTML = `<div class="empty-notice">${viewMode === 'month' ? (isAllTime ? 'Нет записей в базе' : 'Нет записей за этот месяц') : 'Нет записей за выбранную дату'}</div>`;
+  } else {
+    groupDates.forEach(date => {
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'day-group';
+
+      const dayExp = groups[date]
+        .filter(i => i.type === 'exp')
+        .reduce((sum, i) => sum + i.amount, 0);
+
+      groupDiv.innerHTML = `
+        <div class="day-header">
+          <span>${date}</span>
+          <span>${dayExp > 0 ? '-' + dayExp.toLocaleString() + ' ₸' : ''}</span>
+        </div>
+        <div class="history-list"></div>
+      `;
+      const hList = groupDiv.querySelector('.history-list');
       
-      const remainingTextEl = document.getElementById('budget-remaining-text');
-      const paceEl = document.getElementById('budget-daily-pace');
-
-      if (remaining >= 0) {
-        remainingTextEl.innerHTML = `<span style="color:var(--green)">Осталось ${remaining.toLocaleString()} ₸</span>`;
-        if (isCurrentMonth) {
-          const totalDaysInMonth = new Date(yearStr, monthStr, 0).getDate();
-          const daysLeft = Math.max(1, totalDaysInMonth - today.getDate() + 1);
-          const perDay = Math.floor(remaining / daysLeft);
-          paceEl.innerText = `до ${perDay.toLocaleString()} ₸`;
-        } else {
-          paceEl.innerText = 'Месяц закрыт';
+      groups[date].slice().reverse().forEach(item => {
+        let prefix = '', amtClass = '';
+        if (item.type === 'inc' || (item.type === 'dep' && item.category === 'Снятие из копилки')) { 
+          prefix = '+'; amtClass = 'amt-inc'; 
+        } else if (item.type === 'exp') { 
+          prefix = '-'; amtClass = 'amt-exp'; 
+        } else { 
+          prefix = ''; amtClass = 'amt-dep'; 
         }
-      } else {
-        const overspent = Math.abs(remaining);
-        remainingTextEl.innerHTML = `<span style="color:var(--red)">Перерасход +${overspent.toLocaleString()} ₸</span>`;
-        paceEl.innerText = 'Лимит превышен';
-      }
 
-      // 3. Аналитика "Сколько и на что"
-      const sortedCategories = Object.keys(catStats).sort((a, b) => catStats[b].sum - catStats[a].sum);
-      if (sortedCategories.length === 0) {
-        analyticsCatsEl.innerHTML = '<div style="color:var(--text-sec); font-size:14px; text-align:center; padding:10px 0;">Расходов в этом месяце нет</div>';
-      } else {
-        sortedCategories.forEach(cat => {
-          const { sum, count } = catStats[cat];
-          const percent = monthExp > 0 ? Math.round((sum / monthExp) * 100) : 0;
-          const avg = Math.round(sum / count);
-
-          analyticsCatsEl.innerHTML += `
-            <div class="cat-report-item">
-              <div class="cat-line-1">
-                <span>${cat}</span>
-                <span>${sum.toLocaleString()} ₸</span>
-              </div>
-              <div class="cat-line-2">
-                <span>${percent}% от всех трат • ${count} ${count === 1 ? 'чек' : 'чека(ов)'}</span>
-                <span>ср. чек ${avg.toLocaleString()} ₸</span>
-              </div>
-              <div class="cat-bar-track">
-                <div class="cat-bar-fill" style="width: ${percent}%;"></div>
-              </div>
+        hList.innerHTML += `
+          <div class="history-item">
+            <div>
+              <div class="item-cat">${item.category}</div>
+              ${item.note ? `<div class="item-desc">${item.note}</div>` : ''}
             </div>
-          `;
-        });
-      }
-
-      // 4. Список Истории
-      const groupDates = Object.keys(groups);
-      if (groupDates.length === 0) {
-        listEl.innerHTML = `<div class="empty-notice">${viewMode === 'month' ? 'Нет записей за этот месяц' : 'Нет записей за выбранную дату'}</div>`;
-      } else {
-        groupDates.forEach(date => {
-          const groupDiv = document.createElement('div');
-          groupDiv.className = 'day-group';
-
-          const dayExp = groups[date]
-            .filter(i => i.type === 'exp')
-            .reduce((sum, i) => sum + i.amount, 0);
-
-          groupDiv.innerHTML = `
-            <div class="day-header">
-              <span>${date}</span>
-              <span>${dayExp > 0 ? '-' + dayExp.toLocaleString() + ' ₸' : ''}</span>
+            <div style="display:flex; align-items:center;">
+              <div class="item-amt ${amtClass}">${prefix}${item.amount.toLocaleString()} ₸</div>
+              <button class="del-btn" onclick="deleteEntry(${item.id})">Удалить</button>
             </div>
-            <div class="history-list"></div>
-          `;
-          const hList = groupDiv.querySelector('.history-list');
-          
-          groups[date].slice().reverse().forEach(item => {
-            let prefix = '', amtClass = '';
-            if (item.type === 'inc' || (item.type === 'dep' && item.category === 'Снятие из копилки')) { 
-              prefix = '+'; amtClass = 'amt-inc'; 
-            } else if (item.type === 'exp') { 
-              prefix = '-'; amtClass = 'amt-exp'; 
-            } else { 
-              prefix = ''; amtClass = 'amt-dep'; 
-            }
-
-            hList.innerHTML += `
-              <div class="history-item">
-                <div>
-                  <div class="item-cat">${item.category}</div>
-                  ${item.note ? `<div class="item-desc">${item.note}</div>` : ''}
-                </div>
-                <div style="display:flex; align-items:center;">
-                  <div class="item-amt ${amtClass}">${prefix}${item.amount.toLocaleString()} ₸</div>
-                  <button class="del-btn" onclick="deleteEntry(${item.id})">Удалить</button>
-                </div>
-              </div>
-            `;
-          });
-          listEl.appendChild(groupDiv);
-        });
-      }
-
-      localStorage.setItem('mm_data', JSON.stringify(entries));
-    }
-
-    function addEntry() {
-      const amt = parseFloat(document.getElementById('amount').value);
-      const selectedDate = document.getElementById('entry-date').value;
-      if (!amt || amt <= 0) return;
-
-      const recordDate = selectedDate ? new Date(selectedDate + 'T12:00:00').toISOString() : new Date().toISOString();
-
-      entries.push({ 
-        id: Date.now(), 
-        type: currentType, 
-        amount: amt, 
-        category: document.getElementById('category').value, 
-        note: document.getElementById('note').value, 
-        date: recordDate 
+          </div>
+        `;
       });
+      listEl.appendChild(groupDiv);
+    });
+  }
 
-      document.getElementById('amount').value = ''; 
-      document.getElementById('note').value = '';
-      
-      entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-      render();
-    }
-
-    function deleteEntry(id) { 
-      if(confirm('Удалить операцию?')) { 
-        entries = entries.filter(e => e.id !== id); 
-        render(); 
-      } 
-    }
-
-    function exportData() {
-      const payload = { entries, budgets };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); 
-      a.href = URL.createObjectURL(blob); 
-      a.download = `capital_backup_${new Date().toISOString().substring(0,10)}.json`; 
-      a.click();
-    }
-
-    function importData(e) {
-      const file = e.target.files[0]; 
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => { 
-        try { 
-          const parsed = JSON.parse(event.target.result);
-          if (Array.isArray(parsed)) {
-            entries = parsed;
-          } else if (parsed.entries) {
-            entries = parsed.entries;
-            budgets = parsed.budgets || {};
-            localStorage.setItem('mm_budgets', JSON.stringify(budgets));
-          }
-          entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-          render(); 
-          alert('Данные и лимиты успешно импортированы!'); 
-        } catch (err) { 
-          alert('Ошибка парсинга JSON'); 
-        } 
-      };
-      reader.readAsText(file);
-    }
-
-    setType('exp'); 
-    render();
-  </script>
-</body>
-</html>
+  localStorage.setItem('mm_data', JSON.stringify(entries));
+}
