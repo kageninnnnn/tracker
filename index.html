@@ -10,7 +10,7 @@
   <style>
     :root {
       --bg: #000000; --surface: #1c1c1e; --separator: #38383a;
-      --blue: #0a84ff; --red: #ff453a; --green: #32d74b; --purple: #bf5af2;
+      --blue: #0a84ff; --red: #ff453a; --green: #32d74b; --purple: #bf5af2; --orange: #ff9f0a;
       --text: #ffffff; --text-sec: #8e8e93;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
@@ -31,7 +31,7 @@
     .seg-btn { flex: 1; padding: 6px 0; border: none; background: transparent; color: var(--text); font-size: 13px; font-weight: 600; border-radius: 7px; transition: 0.2s; cursor: pointer; }
     .seg-btn.active { background: #636366; color: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 3px 1px rgba(0,0,0,0.04); }
 
-    /* Формы ввода (iOS Inset Grouped) */
+    /* Формы ввода */
     .ios-group { background: var(--surface); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
     .ios-row { display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--separator); position: relative; }
     .ios-row:last-child { border-bottom: none; }
@@ -48,7 +48,20 @@
     .filter-controls { display: flex; align-items: center; gap: 8px; }
     select#month-filter, input#date-filter { background: var(--surface); color: var(--blue); border: none; font-size: 14px; font-weight: 600; padding: 6px 10px; border-radius: 8px; outline: none; color-scheme: dark; }
 
-    /* Аналитика (Прогресс-бары) */
+    /* Блок Бюджета / Лимита */
+    .budget-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--separator); }
+    .budget-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .budget-title { font-size: 14px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; }
+    .budget-edit-btn { background: transparent; border: none; color: var(--blue); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .budget-numbers { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+    .budget-spent { font-size: 24px; font-weight: 700; }
+    .budget-total { font-size: 14px; color: var(--text-sec); }
+    .budget-progress-track { width: 100%; height: 8px; background: var(--separator); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+    .budget-progress-fill { height: 100%; transition: width 0.3s ease, background 0.3s ease; }
+    .budget-footer { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-sec); }
+    .budget-rem-val { font-weight: 600; }
+
+    /* Аналитика по категориям */
     .analytics-list { background: var(--surface); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; }
     .analytics-item { margin-bottom: 12px; }
     .analytics-item:last-child { margin-bottom: 0; }
@@ -77,7 +90,7 @@
 </head>
 <body>
 
-  <!-- Карточка глобального капитала и сводки по выбранному месяцу -->
+  <!-- Карточка баланса -->
   <div class="hero-card">
     <div class="hero-label">Мой капитал</div>
     <div id="val-balance" class="hero-balance">0 ₸</div>
@@ -113,14 +126,35 @@
     <button class="submit" onclick="addEntry()">Добавить</button>
   </div>
 
-  <!-- Аналитика по месяцам -->
+  <!-- Секция Аналитики с Лимитом -->
   <div class="section-header">
     <div class="section-title">Аналитика</div>
     <select id="month-filter" onchange="render()"></select>
   </div>
+
+  <!-- Карточка Лимита Месяца -->
+  <div class="budget-card">
+    <div class="budget-header">
+      <span class="budget-title">Лимит на месяц</span>
+      <button class="budget-edit-btn" onclick="promptSetBudget()">Изменить лимит</button>
+    </div>
+    <div class="budget-numbers">
+      <div class="budget-spent" id="budget-spent-val">0 ₸</div>
+      <div class="budget-total" id="budget-total-val">из 0 ₸</div>
+    </div>
+    <div class="budget-progress-track">
+      <div class="budget-progress-fill" id="budget-fill" style="width: 0%; background: var(--blue);"></div>
+    </div>
+    <div class="budget-footer">
+      <span id="budget-remaining-desc">Остаток:</span>
+      <span id="budget-daily-pace"></span>
+    </div>
+  </div>
+
+  <!-- Категории расходов -->
   <div id="analytics" class="analytics-list"></div>
 
-  <!-- История с фильтрацией: весь месяц или конкретный день -->
+  <!-- Секция Истории -->
   <div class="section-header" style="margin-top: 24px;">
     <div class="section-title">История</div>
     <div class="filter-controls">
@@ -135,7 +169,7 @@
 
   <div id="list"></div>
 
-  <!-- Инструменты импорта/экспорта -->
+  <!-- Инструменты -->
   <div class="data-tools">
     <button class="tool-btn" onclick="exportData()">Скачать JSON</button>
     <button class="tool-btn" onclick="document.getElementById('import-file').click()">Загрузить JSON</button>
@@ -144,8 +178,11 @@
 
   <script>
     let entries = JSON.parse(localStorage.getItem('mm_data') || '[]');
+    let budgets = JSON.parse(localStorage.getItem('mm_budgets') || '{}'); // Лимиты по месяцам { "YYYY-MM": 250000 }
+    let defaultBudget = parseFloat(localStorage.getItem('mm_default_budget') || '200000');
+    
     let currentType = 'exp';
-    let viewMode = 'month'; // 'month' или 'day'
+    let viewMode = 'month';
 
     const categories = {
       exp: ['Еда / Продукты', 'Зал / БАДы', 'Долги', 'Вещи / Техника', 'Транспорт', 'Хотелки'],
@@ -153,7 +190,6 @@
       dep: ['Пополнение', 'Снятие из копилки']
     };
 
-    // Установка даты по умолчанию в форму (сегодняшний день)
     document.getElementById('entry-date').value = new Date().toISOString().substring(0, 10);
     document.getElementById('date-filter').value = new Date().toISOString().substring(0, 10);
 
@@ -173,14 +209,11 @@
     }
 
     function applyDateFilter() {
-      // Автоматически переключаем фильтр месяца на месяц выбранной даты
       const selectedDate = document.getElementById('date-filter').value;
       if (selectedDate) {
         const monthPart = selectedDate.substring(0, 7);
         const monthSelect = document.getElementById('month-filter');
-        if (monthSelect.value !== monthPart) {
-          monthSelect.value = monthPart;
-        }
+        if (monthSelect.value !== monthPart) monthSelect.value = monthPart;
       }
       render();
     }
@@ -193,10 +226,20 @@
       
       const prevVal = select.value;
       select.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
-      if (months.includes(prevVal)) {
-        select.value = prevVal;
-      } else {
-        select.value = current;
+      select.value = months.includes(prevVal) ? prevVal : current;
+    }
+
+    function promptSetBudget() {
+      const selectedMonth = document.getElementById('month-filter').value;
+      const currentLimit = budgets[selectedMonth] || defaultBudget;
+      const input = prompt(`Укажите лимит расходов на ${selectedMonth} (₸):`, currentLimit);
+      if (input !== null) {
+        const val = parseFloat(input);
+        if (!isNaN(val) && val >= 0) {
+          budgets[selectedMonth] = val;
+          localStorage.setItem('mm_budgets', JSON.stringify(budgets));
+          render();
+        }
       }
     }
 
@@ -220,7 +263,6 @@
         const itemDateStr = item.date.substring(0, 10);
         const itemMonth = item.date.substring(0, 7);
 
-        // Расчет глобального капитала
         if (item.type === 'inc') totalInc += item.amount;
         if (item.type === 'exp') totalExp += item.amount;
         if (item.type === 'dep') {
@@ -228,7 +270,6 @@
           else totalDep += item.amount;
         }
 
-        // Расчет сводки выбранного месяца
         if (itemMonth === selectedMonth) {
           if (item.type === 'inc') monthInc += item.amount;
           if (item.type === 'exp') {
@@ -237,13 +278,9 @@
           }
         }
 
-        // Проверка вхождения в текущий режим отображения истории
         let matchesFilter = false;
-        if (viewMode === 'month' && itemMonth === selectedMonth) {
-          matchesFilter = true;
-        } else if (viewMode === 'day' && itemDateStr === selectedDay) {
-          matchesFilter = true;
-        }
+        if (viewMode === 'month' && itemMonth === selectedMonth) matchesFilter = true;
+        else if (viewMode === 'day' && itemDateStr === selectedDay) matchesFilter = true;
 
         if (matchesFilter) {
           const d = new Date(item.date);
@@ -253,16 +290,60 @@
         }
       });
 
-      // Обновление цифр на карточке
+      // Глобальный баланс
       document.getElementById('val-balance').innerText = (totalInc - totalExp - totalDep).toLocaleString() + ' ₸';
       document.getElementById('val-month-inc').innerText = monthInc.toLocaleString() + ' ₸';
       document.getElementById('val-month-exp').innerText = monthExp.toLocaleString() + ' ₸';
       document.getElementById('val-deposit').innerText = totalDep.toLocaleString() + ' ₸';
 
-      // Отрисовка секции "Аналитика расходов" за месяц
+      // Расчет Лимита и прогресса
+      const monthLimit = budgets[selectedMonth] || defaultBudget;
+      const remaining = monthLimit - monthExp;
+      const budgetPercent = monthLimit > 0 ? Math.min(100, Math.round((monthExp / monthLimit) * 100)) : 0;
+
+      document.getElementById('budget-spent-val').innerText = `${monthExp.toLocaleString()} ₸`;
+      document.getElementById('budget-total-val').innerText = `из ${monthLimit.toLocaleString()} ₸`;
+
+      const fillBar = document.getElementById('budget-fill');
+      fillBar.style.width = `${budgetPercent}%`;
+
+      // Динамический цвет прогресс-бара лимита
+      if (monthExp > monthLimit) {
+        fillBar.style.background = 'var(--red)';
+      } else if (budgetPercent >= 80) {
+        fillBar.style.background = 'var(--orange)';
+      } else {
+        fillBar.style.background = 'var(--blue)';
+      }
+
+      // Вычисление оставшихся дней и темпа
+      const [yearStr, monthStr] = selectedMonth.split('-');
+      const today = new Date();
+      const isCurrentMonth = (today.getFullYear() === parseInt(yearStr)) && ((today.getMonth() + 1) === parseInt(monthStr));
+      
+      const descEl = document.getElementById('budget-remaining-desc');
+      const paceEl = document.getElementById('budget-daily-pace');
+
+      if (remaining >= 0) {
+        descEl.innerHTML = `Остаток лимита: <strong style="color:var(--green);">${remaining.toLocaleString()} ₸</strong>`;
+        if (isCurrentMonth) {
+          const totalDaysInMonth = new Date(yearStr, monthStr, 0).getDate();
+          const daysLeft = Math.max(1, totalDaysInMonth - today.getDate() + 1);
+          const perDay = Math.floor(remaining / daysLeft);
+          paceEl.innerText = `~${perDay.toLocaleString()} ₸ / день`;
+        } else {
+          paceEl.innerText = '';
+        }
+      } else {
+        const overspent = Math.abs(remaining);
+        descEl.innerHTML = `Перерасход: <strong style="color:var(--red);">+${overspent.toLocaleString()} ₸</strong>`;
+        paceEl.innerText = 'Лимит исчерпан';
+      }
+
+      // Отрисовка категорий расходов
       const sortedCats = Object.keys(categorySums).sort((a, b) => categorySums[b] - categorySums[a]);
       if (sortedCats.length === 0) {
-        analyticsEl.innerHTML = '<div style="color:var(--text-sec); font-size:14px; text-align:center;">Нет расходов за выбранный месяц</div>';
+        analyticsEl.innerHTML = '<div style="color:var(--text-sec); font-size:14px; text-align:center;">Нет расходов за этот месяц</div>';
       } else {
         sortedCats.forEach(cat => {
           const amt = categorySums[cat];
@@ -276,7 +357,7 @@
         });
       }
 
-      // Отрисовка истории
+      // Отрисовка списка истории
       const groupDates = Object.keys(groups);
       if (groupDates.length === 0) {
         listEl.innerHTML = `<div class="empty-notice">${viewMode === 'month' ? 'Нет записей за этот месяц' : 'Нет записей за выбранную дату'}</div>`;
@@ -285,7 +366,6 @@
           const groupDiv = document.createElement('div');
           groupDiv.className = 'day-group';
 
-          // Считаем итог расходов по данному дню
           const dayExp = groups[date]
             .filter(i => i.type === 'exp')
             .reduce((sum, i) => sum + i.amount, 0);
@@ -334,7 +414,6 @@
       const selectedDate = document.getElementById('entry-date').value;
       if (!amt || amt <= 0) return;
 
-      // Если дата не заполнена пользователем, берем текущий момент
       const recordDate = selectedDate ? new Date(selectedDate + 'T12:00:00').toISOString() : new Date().toISOString();
 
       entries.push({ 
@@ -349,7 +428,6 @@
       document.getElementById('amount').value = ''; 
       document.getElementById('note').value = '';
       
-      // Сортировка записей хронологически
       entries.sort((a, b) => new Date(a.date) - new Date(b.date));
       render();
     }
@@ -362,7 +440,11 @@
     }
 
     function exportData() {
-      const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+      const payload = {
+        entries: entries,
+        budgets: budgets
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const a = document.createElement('a'); 
       a.href = URL.createObjectURL(blob); 
       a.download = `capital_backup_${new Date().toISOString().substring(0,10)}.json`; 
@@ -375,10 +457,17 @@
       const reader = new FileReader();
       reader.onload = (event) => { 
         try { 
-          entries = JSON.parse(event.target.result); 
+          const parsed = JSON.parse(event.target.result);
+          if (Array.isArray(parsed)) {
+            entries = parsed;
+          } else if (parsed.entries) {
+            entries = parsed.entries;
+            budgets = parsed.budgets || {};
+            localStorage.setItem('mm_budgets', JSON.stringify(budgets));
+          }
           entries.sort((a, b) => new Date(a.date) - new Date(b.date));
           render(); 
-          alert('База загружена!'); 
+          alert('База и лимиты успешно загружены!'); 
         } catch (err) { 
           alert('Ошибка чтения файла'); 
         } 
